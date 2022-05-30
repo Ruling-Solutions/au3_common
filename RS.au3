@@ -1,4 +1,4 @@
-﻿#include-once
+#include-once
 
 #include <APIConstants.au3>
 #include <Array.au3>
@@ -979,6 +979,8 @@ EndFunc
 ; ; @param  [Integer]       Option flags. Default: $STDOUT_CHILD.
 ; ; @return String[]        Array with StdOut.
 Func RS_shell($pExecutable, $pParameters = '', $pDir = '', $pTooltip = '', $pShowFlag = @SW_HIDE, $pOptFlags = $STDOUT_CHILD)
+  ; Add quotes to executable if needed and add parameters
+  $pExecutable = RS_quote($pExecutable)
   If StringLen($pParameters) > 0 Then $pExecutable &= ' ' & $pParameters
 
   ; Run external program
