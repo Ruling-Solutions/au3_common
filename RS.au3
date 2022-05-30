@@ -329,7 +329,6 @@ Func RS_cmdLine($pRawMode = False)
     Local $sCmdLine = $CmdLineRaw
     If Not @Compiled Then
       Local $iPos = StringInStr($sCmdLine, @ScriptName)
-      ConsoleWrite('Command length: ' & StringLen($sCmdLine) & '. Name pos: ' & $iPos & '. Name end pos: ' & $iPos + StringLen(@ScriptName) & @CRLF)
       If $iPos > 0 Then
         $sCmdLine = StringStripWS(StringMid($sCmdLine, $iPos + StringLen(@ScriptName) + 1), 3)
       EndIf
@@ -807,6 +806,16 @@ Func RS_environLoad($pCase = 0, $pSymbol = False)
   Return $sArray
 EndFunc
 ; ============================================================================= RS_environLoad ===>
+; <=== RS_fileExists ==============================================================================
+; RS_fileExists(String)
+; ; Wrapper for FileExists. Removes leading and trailing quotes to avoid checking errors.
+; ;
+; ; @param  String          Filename with full path.
+; ; @return Integer         1 if file exists, 0 otherwise.
+Func RS_fileExists($pFullPath)
+  Return FileExists(RS_Trim(RS_Trim($pFullPath, "'"), '"'))
+EndFunc
+; ============================================================================== RS_fileExists ===>
 ; <=== RS_fileNameInfo ============================================================================
 ; RS_fileNameInfo(String, Integer)
 ; ; Returns filename info: drive, directory, filename and/or extension. Uses lowercase.
@@ -911,10 +920,8 @@ EndFunc
 ; ; @return String          Full path.
 ;~ Func _RS_path
 Func RS_pathCombine($pPath0, $pPath1 = '', $pPath2 = '', $pPath3 = '', $pPath4 = '', $pPath5 = '', $pPath6 = '', $pPath7 = '', $pPath8 = '', $pPath9 = '')
-  Local $sFullPath
-
   ; Add non-empty strings adding a backslash at end.
-  $sFullPath = RS_environ($pPath0)
+  Local $sFullPath = RS_environ($pPath0)
   If StringLen($pPath1) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath1) : RS_RTrim($sFullPath, '\') & '\' & RS_environ($pPath1)
   If StringLen($pPath2) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath2) : RS_RTrim($sFullPath, '\') & '\' & RS_environ($pPath2)
   If StringLen($pPath3) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath3) : RS_RTrim($sFullPath, '\') & '\' & RS_environ($pPath3)
