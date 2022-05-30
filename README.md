@@ -1,2 +1,2 @@
-# au3_common
-Common libraries for AutoIt scripts-
+# AutoIt common libraries
+Shared libraries for AutoIt scripts.
