@@ -46,7 +46,7 @@ Func INI_keys($pINIFile, $pSection, $pInclude = '', $pIncludePos = 1, $pCaseSens
   ; Load lines from INI file into array
   $iIncludedLen = StringLen($pInclude)
   $sLines = FileReadToArray($pINIFile)
-  If @error Then Return SetError(5001, 0, '')
+  If @error Then Return SetError(100, 0, '')
   $iLinesCount = @extended
 
   ; Search for sections
@@ -120,6 +120,8 @@ Func INI_keyExists($pINIFile, $pSection, $pKey, $pInclude = '', $pIncludePos = 1
   If StringLen($pINIFile) = 0 Or StringLen($pSection) = 0 Or StringLen($pKey) = 0 Or Not FileExists($pINIFile) Then Return SetError(5005, 0, False)
 
   Local $aKeys = INI_keys($pINIFile, $pSection, $pInclude, $pIncludePos, $pCaseSensitive)
+  If @error Then Return SetError(101, 0, '')
+
   For $sKey In $aKeys
     If $sKey = $pKey Then Return True
   Next
@@ -139,6 +141,7 @@ EndFunc
 Func INI_objectName($pINIFile, $pSection, $pKey, $pValue, $pClass = '')
   If StringLen($pKey) > 0 Then
     Local $sValue = INI_valueLoad($pINIFile, $pSection, $pKey, $pValue)
+    If @error Then Return SetError(102, 0, '')
     If StringLen($sValue) = 0 Then $sValue = $pValue
 
     If StringLen($pClass) > 0 Then
@@ -167,13 +170,19 @@ EndFunc
 ; ; @param  [String]   	    Separator. Space is always included. Default: Comma.
 ; ; @return Array     	    Point coordinates.
 Func INI_pointLoad($pINIFile, $pSection, $pKey, $pValue = '', $pSeparator = Default)
-  If $pSeparator = ' ' Then $pSeparator = ''
   If $pSeparator = Default Or StringLen($pSeparator) = 0 Then $pSeparator = ','
-  Local $aItems = StringSplit(INI_valueLoad($pINIFile, $pSection, $pKey, $pValue, False), $pSeparator & ' ', 2)
-  For $i = UBound($aItems) - 1 To 1 Step -1
-    If StringLen($aItems[$i]) = 0 Then _ArrayDelete($aItems, $i)
+  $pSeparator = StringStripWS($pSeparator, 8)
+
+  Local $sEntries = INI_valueLoad($pINIFile, $pSection, $pKey, $pValue, False)
+  If @error Then Return SetError(103, 0, '')
+  $sEntries = StringReplace($sEntries, $pSeparator & $pSeparator, $pSeparator)
+  Local $aEntries = StringSplit($sEntries, $pSeparator & ' ', 2)
+
+  ; Remove empty entries
+  For $i = UBound($aEntries) - 1 To 1 Step -1
+    If StringLen($aEntries[$i]) = 0 Then _ArrayDelete($aEntries, $i)
   Next
-  Return $aItems
+  Return $aEntries
 EndFunc
 
 ; <=== INI_sections ===============================================================================
@@ -345,6 +354,67 @@ EndFunc   ;==>INI_valueWrite
 ; ============================================================================== INI MANAGEMENT ==>
 
 ; <== INTERNAL PROCEDURES =========================================================================
+; <=== _INI_trim ==================================================================================
+; _INI_trim(String, String, [String])
+; ; Removes leading and trailing characters.
+; ;
+; ; @param  String     	    Original text.
+; ; @param  String    	    Characters to remove.
+; ; @param  [String] 	      Process characters as entire string. Default: False.
+; ; @return String    	    Trimmed text.
+Func _INI_trim($pText, $pCharacters, $pEntire = False)
+  Return _INI_trimRight(_INI_trimLeft($pText, $pCharacters, $pEntire), $pCharacters, $pEntire)
+EndFunc
+; <=== _INI_trimLeft ==============================================================================
+; _INI_trimLeft(String, String, [String])
+; ; Removes leading characters.
+; ;
+; ; @param  String     	    Original text.
+; ; @param  String    	    Characters to remove.
+; ; @param  [String] 	      Process characters as entire string. Default: False.
+; ; @return String    	    Trimmed text.
+Func _INI_trimLeft($pText, $pCharacters, $pEntire = False)
+  If StringLen($pText) = 0 Then Return ''
+  If StringLen($pCharacters) = 0 Then Return $pText
+
+  If $pEntire Then
+    Local $intLen = StringLen($pCharacters)
+    While StringLeft($pText, $intLen) = $pCharacters
+      $pText = StringTrimLeft($pText, $intLen)
+    Wend
+  Else
+    For $sChar In StringSplit($pCharacters, '', 2)
+      $pText = _INI_trimLeft($pText, $sChar, True)
+    Next
+  EndIf
+  Return $pText
+EndFunc
+; <=== _INI_trimRight =============================================================================
+; _INI_trimRight(String, String, [String])
+; ; Removes trailing characters.
+; ;
+; ; @param  String     	    Original text.
+; ; @param  String    	    Characters to remove.
+; ; @param  [String] 	      Process characters as entire string. Default: False.
+; ; @return String    	    Trimmed text.
+Func _INI_trimRight($pText, $pCharacters, $pEntire = False)
+  If StringLen($pText) = 0 Then Return ''
+  If StringLen($pCharacters) = 0 Then Return $pText
+
+  If $pEntire Then
+    Local $intLen = StringLen($pCharacters)
+    While StringRight($pText, $intLen) = $pCharacters
+      $pText = StringTrimRight($pText, $intLen)
+    Wend
+  Else
+    For $sChar In StringSplit($pCharacters, '', 2)
+      $pText = _INI_trimRight($pText, $sChar, True)
+    Next
+  EndIf
+
+  Return $pText
+EndFunc
+
 ; <=== _INI_value =================================================================================
 ; _INI_value(String, String, String, String, String)
 ; ; Internal procedure for value management (supports encoding: UTF-8, ANSI or others).
@@ -362,10 +432,10 @@ Func _INI_value($pINIFile, $pSection, $pKey, $pValue, $pAction)
 	Local $sLines
   Local $sLine
 
+  ; Check parameters
 	If StringLen($pINIFile) = 0 Or StringLen($pSection) = 0 Or StringLen($pKey) = 0 Then Return ''
-
+  $pSection = '[' & _INI_trim($pSection, '[]') & ']'
   $pKey = StringStripWS($pKey, 3)
-  $pSection = '[' & $pSection & ']'
   $pAction = StringLower($pAction)
 
 	If FileExists($pINIFile) Then
