@@ -1,4 +1,5 @@
 #include-once
+
 #include <Array.au3>
 
 ; Creates ASCII characters string
