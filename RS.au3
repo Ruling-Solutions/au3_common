@@ -57,36 +57,36 @@ EndFunc
 ; ============================================================================ ARRAY PROCEDURES ==>
 
 ; <== BOOLEAN PROCEDURES ==========================================================================
-; <=== RS_booleanInt ==============================================================================
-; RS_booleanInt(Boolean)
+; <=== RS_boolInteger =============================================================================
+; RS_boolInteger(Boolean)
 ; ; Returns a integer value from a boolean.
 ; ;
 ; ; @param  Boolean         Boolean expression.
 ; ; @return Integer         1 if Boolean is True, 0 otherwise.
-Func RS_booleanInt($pValue)
+Func RS_boolInteger($pValue)
   Return ($pValue) ? 1 : 0
 EndFunc
-; ============================================================================== RS_booleanInt ===>
-; <=== RS_integerBool =============================================================================
-; RS_integerBool(Integer)
+; ============================================================================= RS_boolInteger ===>
+; <=== RS_intBoolean ==============================================================================
+; RS_intBoolean(Integer)
 ; ; Returns a boolean value from a integer.
 ; ;
 ; ; @param  Integer         Integer expression.
 ; ; @return Boolean         True if Integer is 1, False otherwise.
-Func RS_integerBool($pValue)
+Func RS_intBoolean($pValue)
   Return ($pValue = 1) ? True : False
 EndFunc
-; ============================================================================= RS_integerBool ===>
-; <=== RS_stringBool ==============================================================================
-; RS_stringBool(String)
+; ============================================================================== RS_intBoolean ===>
+; <=== RS_strBoolean ==============================================================================
+; RS_strBoolean(String)
 ; ; Returns a boolean value from a literal string.
 ; ;
 ; ; @param  String          String expression.
 ; ; @return Boolean         True if String is 'true', False otherwise.
-Func RS_stringBool($pValue)
+Func RS_strBoolean($pValue)
   Return (StringLower($pValue) = 'true') ? True : False
 EndFunc
-; ============================================================================== RS_stringBool ===>
+; ============================================================================== RS_strBoolean ===>
 ; ========================================================================== BOOLEAN PROCEDURES ==>
 
 ; <== NUMBER PROCEDURES ===========================================================================
@@ -241,7 +241,7 @@ Func RS_absoluteURL($pBaseURL, $pRelativeURL)
   Local $sScheme
 
   ; Modify base and relative URLs
-  $pBaseURL = RS_Trim(StringReplace($pBaseURL, '\', '/'), '/')
+  $pBaseURL = RS_trim(StringReplace($pBaseURL, '\', '/'), '/')
   $pRelativeURL = StringStripWS(StringReplace($pRelativeURL, '\', '/'), 3)
 
   If StringLen($pRelativeURL) = 0 Or $pBaseURL = $pRelativeURL Then Return $pBaseURL
@@ -290,6 +290,30 @@ Func RS_absoluteURL($pBaseURL, $pRelativeURL)
   Return $sScheme & $pBaseURL & $pRelativeURL
 EndFunc
 ; ============================================================================= RS_absoluteURL ===>
+; <=== RS_addDir ==================================================================================
+; RS_addDir(String, [String])
+; ; Add directory to a filename. If dir was not defined, add Script dir.
+; ;
+; ; @param  String          Filename.
+; ; @param  [String]        Dir to add. Default: Script dir.
+; ; @return String          Filename and directory.
+Func RS_addDir($pFile, $pDir = Default)
+  If $pDir = Default Or StringLen($pDir) = 0 Then $pDir = RS_addSlash(@ScriptDir)
+  If StringLen($pFile) > 0 And StringInStr($pFile, '\', 2) = 0 Then $pFile = $pDir & $pFile
+  Return $pFile
+EndFunc
+; ================================================================================== RS_addDir ===>
+; <=== RS_addSlash ================================================================================
+; RS_addSlash(String)
+; ; Add trailing slash removing leading and trailing spaces and double slashes.
+; ;
+; ; @param  String          Path to verify.
+; ; @return String          Path with trailing slash.
+Func RS_addSlash($pPath)
+  $pPath = StringStripWS($pPath, 3)
+  Return StringReplace(RS_trimRight($pPath, '\') & '\', '\\', '\', 0, 2)
+EndFunc
+; ================================================================================ RS_addSlash ===>
 ; <=== RS_case ====================================================================================
 ; RS_case(Integer)
 ; ; Change string case.
@@ -320,9 +344,9 @@ EndFunc
 ; RS_cmdLine([Boolean])
 ; ; Return command line parameters in a single line avoiding debug return in scripting mode.
 ; ;
-; ; @param  [Boolean]       True to use $CmdLineRaw, False to iterate parameters. Default: False.
+; ; @param  [Boolean]       True to use $CmdLineRaw, False for parameters iteration. Default: True.
 ; ; @return String          Command line parameter.
-Func RS_cmdLine($pRawMode = False)
+Func RS_cmdLine($pRawMode = True)
   Local $sCmdLine = ''
 
   If $pRawMode Then
@@ -336,14 +360,69 @@ Func RS_cmdLine($pRawMode = False)
   Else
     If $CmdLine[0] > 0 Then
       For $i = 1 To $CmdLine[0]
-        $sCmdLine &= $CmdLine[$i]
+        $sCmdLine &= $CmdLine[$i] & ' '
       Next
+      $sCmdLine = StringTrimRight($sCmdLine, 1)
     EndIf
   EndIf
 
   Return $sCmdLine
 EndFunc
 ; ================================================================================= RS_cmdLine ===>
+; <=== RS_cmdLines() ==============================================================================
+; RS_cmdLines([Boolean], [String])
+; ; Returns array with options or filenames instructions from command line.
+; ;
+; ; @param  [Boolean]   	  True to get options. False to get filenames. Default: False.
+; ; @param  [String]   	    Single character to define options in command line. Default: '-'.
+; ; @return String()   	    Array with info retrieved.
+; ; @access Public
+Func RS_cmdLines($pOptions = False, $pOptionChar = Default)
+  If $pOptionChar = Default or StringLen($pOptionChar) = 0 Then $pOptionChar = '-'
+  $pOptionChar = StringLeft($pOptionChar, 1)
+
+  Local $strParams[1]
+  For $i = 1 To $CmdLine[0]
+    If $pOptions Then
+      If StringLeft($CmdLine[$i], 1) = $pOptionChar Then _ArrayAdd($strParams, $CmdLine[$i])
+    Else
+      If StringLeft($CmdLine[$i], 1) <> $pOptionChar Then _ArrayAdd($strParams, $CmdLine[$i])
+    EndIf
+  Next
+  $strParams[0] = UBound($strParams) - 1
+  Return $strParams
+EndFunc
+; ============================================================================== RS_cmdLines() ===>
+; <=== RS_cmdOption ===============================================================================
+; RS_cmdOption(String, [Boolean])
+; ; Returns value or existence of an option from command line instructions.
+; ;
+; ; @param  String   	      Command line option.
+; ; @param  [Boolean]   	  True to get option existence, False to get value. Default: False.
+; ; @return String          Value retrieved.
+; ; @access Public
+Func RS_cmdOption($pOption, $pExistence = Default)
+  If $pExistence = Default Or StringLen($pExistence) = 0 Then $pExistence = False
+  If StringLen($pOption) = 0 Then Return $pExistence ? False : ''
+
+  Local $strOption = RS_cmdLines(True, StringLeft($pOption, 1))
+  If $strOption[0] = 0 Then
+    Return $pExistence ? False : ''
+  Else
+    Local $intLen = StringLen($pOption)
+    For $i = 1 To $strOption[0]
+      If StringLen($strOption[$i]) = $intLen Then
+        If $strOption[$i] = $pOption Then Return $pExistence ? True : $strOption[$i]
+      Else
+        If StringLeft($strOption[$i], $intLen + 1) = $pOption & '=' Then
+          Return $pExistence ? True : StringMid($strOption[$i], $intLen + 2)
+        EndIf
+      EndIf
+    Next
+    Return $pExistence ? False : ''
+  EndIf
+EndFunc
+; =============================================================================== RS_cmdOption ===>
 ; <=== RS_countChars ==============================================================================
 ; RS_countChars(String, String, [Boolean])
 ; ; Count all characters ocurrences in a string.
@@ -352,13 +431,13 @@ EndFunc
 ; ; @param  String   	      Characters to count. Default: Space.
 ; ; @param  [Boolean]   	  Count as individual characters or as a entire string. Default: False.
 ; ; @return Integer         Ocurrences.
-Func RS_countChars($pText, $pCharacters, $pWhole = False)
+Func RS_countChars($pText, $pCharacters, $pEntire = False)
   ; Set default values
   If StringLen($pText) = 0 Then Return ''
   If StringLen($pCharacters) = 0 Or $pCharacters = Default Then $pCharacters = ' '
-  If $pWhole = Default Then $pWhole = False
+  If $pEntire = Default Then $pEntire = False
 
-  If $pWhole Then
+  If $pEntire Then
     Local $sTmp = StringReplace($pText, $pCharacters, $pCharacters)
     Return @extended
   Else
@@ -378,15 +457,25 @@ EndFunc
 ; ; @param  [String] 	      Characters to use as delimiters (case sensitive). Default: Space.
 ; ; @param  [Boolean]   	  Count as individual characters or as a entire string. Default: False.
 ; ; @return Integer         Tokens count.
-Func RS_countTokens($pText, $pDelimiters = ' ', $pWhole = False)
+Func RS_countTokens($pText, $pDelimiters = ' ', $pEntire = False)
   ; Set default values
   If StringLen($pText) = 0 Then Return ''
   If StringLen($pDelimiters) = 0 Or $pDelimiters = Default Then $pDelimiters = ' '
-  If $pWhole = Default Then $pWhole = False
+  If $pEntire = Default Then $pEntire = False
 
-  Return RS_countChars(RS_stripChars($pText, $pDelimiters, $pWhole), $pDelimiters, $pWhole) + 1
+  Return RS_countChars(RS_stripChars($pText, $pDelimiters, $pEntire), $pDelimiters, $pEntire) + 1
 EndFunc
 ; ============================================================================= RS_countTokens ===>
+; <=== RS_CRLF ====================================================================================
+; RS_CRLF(String)
+; ; Replace @CR and @LF with @CRLF.
+; ;
+; ; @param  String          Text with carriage returns.
+; ; @return String          Text with only @CRLF.
+Func RS_CRLF($pText)
+  Return StringRegExpReplace($pText, '\n|\r', @CRLF)
+EndFunc
+; ==================================================================================== RS_CRLF ===>
 ; <=== RS_decodeURI ===============================================================================
 ; RS_decodeURI(String)
 ; ; Decode URI (URL and URN) with percent-encoding.
@@ -482,89 +571,6 @@ Func RS_escape($pText, $pToAscii = False)
   Return $pText
 EndFunc
 ; ================================================================================== RS_escape ===>
-; <=== RS_CRLF ====================================================================================
-; RS_CRLF(String)
-; ; Replace @CR and @LF with @CRLF.
-; ;
-; ; @param  String          Text with carriage returns.
-; ; @return String          Text with only @CRLF.
-Func RS_CRLF($pText)
-  Return StringRegExpReplace($pText, '\n|\r', @CRLF)
-EndFunc
-; ==================================================================================== RS_CRLF ===>
-; <=== RS_LTrim ===================================================================================
-; RS_LTrim(String, [String], [Boolean])
-; ; Removes defined leading characters.
-; ;
-; ; @param  String     	    Original text.
-; ; @param  [String]   	    Characters to trim. Default: Space.
-; ; @param  [Boolean]   	  Trim as individual characters or as a entire string. Default: True.
-; ; @return String     	    Processed text.
-Func RS_LTrim($pText, $pCharacters = ' ', $pWhole = True)
-  Local $iLen
-
-  ; Set default values
-  If StringLen($pText) = 0 Then Return ''
-  If StringLen($pCharacters) = 0 Or $pCharacters = Default Then $pCharacters = ' '
-  If $pWhole = Default Then $pWhole = True
-
-  If $pWhole Then
-    $iLen = StringLen($pCharacters)
-    While StringLeft($pText, $iLen) = $pCharacters
-      $pText = StringTrimLeft($pText, $iLen)
-    WEnd
-  Else
-    For $sCharacter In StringSplit($pCharacters, '', 2)
-      $pText = RS_LTrim($pText, $sCharacter, True)
-    Next
-  EndIf
-
-  Return $pText
-EndFunc
-; =================================================================================== RS_LTrim ===>
-; <=== RS_RTrim ===================================================================================
-; RS_RTrim(String, [String], [Boolean])
-; ; Removes defined trailing characters.
-; ;
-; ; @param  String     	    Original text.
-; ; @param  [String]   	    Characters to trim. Default: Space.
-; ; @param  [Boolean]   	  Trim as individual characters or as a entire string. Default: True.
-; ; @return String     	    Processed text.
-Func RS_RTrim($pText, $pCharacters = ' ', $pWhole = True)
-  Local $iLen
-
-  ; Set default values
-  If StringLen($pText) = 0 Then Return ''
-  If StringLen($pCharacters) = 0 Or $pCharacters = Default Then $pCharacters = ' '
-  If $pWhole = Default Then $pWhole = True
-
-  If $pWhole Then
-    $iLen = StringLen($pCharacters)
-    While StringRight($pText, $iLen) = $pCharacters
-      $pText = StringTrimRight($pText, $iLen)
-    WEnd
-  Else
-    For $sCharacter In StringSplit($pCharacters, '', 2)
-      $pText = RS_RTrim($pText, $sCharacter, True)
-    Next
-  EndIf
-
-  Return $pText
-EndFunc
-; =================================================================================== RS_RTrim ===>
-; <=== RS_Trim ====================================================================================
-; RS_Trim(String, [String], [Boolean])
-; ; Removes defined leading and trailing characters at both ends.
-; ;
-; ; @param  String     	    Original text.
-; ; @param  [String]   	    Characters to trim. Default: Space.
-; ; @param  [Boolean]   	  Trim as individual characters or as a entire string. Default: False.
-; ; @return String     	    Processed text.
-Func RS_Trim($pText, $pCharacters = ' ', $pWhole = True)
-  Return RS_LTrim(RS_RTrim($pText, $pCharacters, $pWhole), $pCharacters, $pWhole)
-EndFunc
-; ==================================================================================== RS_Trim ===>
-
 ; <=== RS_padLeft =================================================================================
 ; RS_padLeft(String, Integer, String)
 ; ; Left pads a string with specified length and padding character. If string is longer than
@@ -599,7 +605,6 @@ Func RS_padRight($pString, $pLength, $pChar = ' ')
   Return StringLeft($pString & _StringRepeat($pChar, $pLength), $pLength)
 EndFunc
 ; ================================================================================ RS_padRight ===>
-
 ; <=== RS_quote ===================================================================================
 ; RS_quote(String)
 ; ; Add quotes if filename has spaces, or removes if doesn't.
@@ -610,7 +615,7 @@ EndFunc
 Func RS_quote($pFileName)
   If StringLen($pFileName) = 0 Then Return ''
 
-  $pFileName = RS_Trim(RS_Trim($pFileName, "'"), '"')
+  $pFileName = RS_trim(RS_trim($pFileName, '"'), "'")
   If StringInStr($pFileName, ' ') > 0 Then $pFileName = '"' & $pFileName & '"'
   Return $pFileName
 EndFunc
@@ -627,7 +632,7 @@ Func RS_removeExt($pFileName)
   Return StringRegExpReplace($pFileName, '\.[^.\\/]*$', '')
 EndFunc
 ; =============================================================================== RS_removeExt ===>
-; <=== RS_split ===================================================================================
+; <=== RS_split() =================================================================================
 ; RS_split(String, [String], [Integer], [Integer])
 ; ; Splits up a string into substrings depending on given delimiters avoiding empty entries.
 ; ; Specific number of returned entries can be defined.
@@ -636,7 +641,7 @@ EndFunc
 ; ; @param  [String]   	    Character(s) to use as delimiters (case sensitive). Default: Space.
 ; ; @param  [Integer]       Flags for StringSplit. Default: 0 ($STR_CHRSPLIT).
 ; ; @param  [Integer]       Number of entries returned. Default: -1 (All).
-; ; @return String     	    String array.
+; ; @return String()   	    String array.
 Func RS_split($pText, $pDelimiters = ' ', $pFlags = 0, $pCount = -1)
   ; Set default values
   If StringLen($pText) = 0 Then Return Null
@@ -659,7 +664,7 @@ Func RS_split($pText, $pDelimiters = ' ', $pFlags = 0, $pCount = -1)
   If $pCount = 1 Then
     Dim $sEntries[$iStart + 1]
     If $iStart = 1 Then $sEntries[0] = 1
-    $sEntries[$iStart] = RS_Trim($pText, $pDelimiters, $bWhole)
+    $sEntries[$iStart] = RS_trim($pText, $pDelimiters, $bWhole)
   Else
     $sEntries = StringSplit(RS_stripChars($pText, $pDelimiters, $bWhole), $pDelimiters, $pFlags)
     If $pCount < $iEntriesCount Then
@@ -667,12 +672,12 @@ Func RS_split($pText, $pDelimiters = ' ', $pFlags = 0, $pCount = -1)
       $sText = $pText
       For $i = $iStart To UBound($sEntries) - 1
         $iIndex += 1
-        $sText = RS_LTrim($sText, $pDelimiters, $bWhole)
+        $sText = RS_trimLeft($sText, $pDelimiters, $bWhole)
         $sToken = StringLeft($sText, StringLen($sEntries[$i]))
         $sText = StringTrimLeft($sText, StringLen($sEntries[$i]))
         If $iIndex + 1 = $pCount Then ExitLoop
       Next
-      $sEntries[$pCount - 1] = RS_LTrim($sText, $pDelimiters, $bWhole)
+      $sEntries[$pCount - 1] = RS_trimLeft($sText, $pDelimiters, $bWhole)
       ReDim $sEntries[$pCount]
       If $iStart = 1 Then $sEntries[0] = $pCount - 1
     EndIf
@@ -680,7 +685,7 @@ Func RS_split($pText, $pDelimiters = ' ', $pFlags = 0, $pCount = -1)
 
   Return $sEntries
 EndFunc
-; =================================================================================== RS_split ===>
+; ================================================================================= RS_split() ===>
 ; <=== RS_stripChars ==============================================================================
 ; RS_stripChars(String, [String], [Boolean])
 ; ; Removes all leading, trailing and double (or more) characters in a string.
@@ -689,17 +694,17 @@ EndFunc
 ; ; @param  [String]   	    Characters to remove. Default: Space.
 ; ; @param  [Boolean]   	  Remove as individual characters or as a entire string. Default: False.
 ; ; @return String     	    New string.
-Func RS_stripChars($pText, $pCharacters = ' ', $pWhole = False)
+Func RS_stripChars($pText, $pCharacters = ' ', $pEntire = False)
   ; Set default values
   If StringLen($pText) = 0 Then Return ''
   If StringLen($pCharacters) = 0 Or $pCharacters = Default Then $pCharacters = ' '
-  If $pWhole = Default Then $pWhole = False
+  If $pEntire = Default Then $pEntire = False
 
-  If $pWhole Then
+  If $pEntire Then
     If $pCharacters = ' ' Then
       $pText = StringStripWS($pText, 7)
     Else
-      $pText = RS_Trim($pText, $pCharacters, $pWhole)
+      $pText = RS_trim($pText, $pCharacters, $pEntire)
       Do
         $pText = StringReplace($pText, $pCharacters & $pCharacters, $pCharacters)
       Until @extended = 0
@@ -713,6 +718,102 @@ Func RS_stripChars($pText, $pCharacters = ' ', $pWhole = False)
   Return $pText
 EndFunc
 ; ============================================================================== RS_stripChars ===>
+; <=== RS_trim ====================================================================================
+; RS_trim(String, [String], [Boolean])
+; ; Removes defined leading and trailing characters at both ends.
+; ;
+; ; @param  String     	    Original text.
+; ; @param  [String]   	    Characters to trim. Default: Space.
+; ; @param  [Boolean]   	  Trim as individual characters or as a entire string. Default: False.
+; ; @return String     	    Processed text.
+Func RS_trim($pText, $pCharacters = ' ', $pEntire = True)
+  Return RS_trimLeft(RS_trimRight($pText, $pCharacters, $pEntire), $pCharacters, $pEntire)
+EndFunc
+; ==================================================================================== RS_trim ===>
+; <=== RS_trimLeft ================================================================================
+; RS_trimLeft(String, [String], [Boolean])
+; ; Removes defined leading characters.
+; ;
+; ; @param  String     	    Original text.
+; ; @param  [String]   	    Characters to trim. Default: Space.
+; ; @param  [Boolean]   	  Trim as individual characters or as a entire string. Default: True.
+; ; @return String     	    Processed text.
+Func RS_trimLeft($pText, $pCharacters = Default, $pEntire = Default)
+  ; Set default values
+  If StringLen($pText) = 0 Then Return ''
+  If StringLen($pCharacters) = 0 Then Return $pText
+  If $pCharacters = Default Then $pCharacters = ' '
+  If $pEntire = Default Then $pEntire = True
+
+  If $pEntire Then
+    Local $intLen = StringLen($pCharacters)
+    While StringLeft($pText, $intLen) = $pCharacters
+      $pText = StringTrimLeft($pText, $intLen)
+    WEnd
+  Else
+    Local $boolExit
+    Local $strChars = StringSplit($pCharacters, '', 2)
+    Do
+      $boolExit = True
+      For $strChar In $strChars
+        If StringInStr($pText, $strChar) Then $boolExit = False
+      Next
+      If $boolExit Then ExitLoop
+
+      For $strChar In $strChars
+        $pText = RS_trimLeft($pText, $strChar, True)
+      Next
+      For $i = UBound($strChars) - 1 To 0 Step -1
+        $pText = RS_trimLeft($pText, $strChars[$i], True)
+      Next
+    Until $boolExit
+  EndIf
+
+  Return $pText
+EndFunc
+; ================================================================================ RS_trimLeft ===>
+; <=== RS_trimRight ===============================================================================
+; RS_trimRight(String, [String], [Boolean])
+; ; Removes defined trailing characters.
+; ;
+; ; @param  String     	    Original text.
+; ; @param  [String]   	    Characters to trim. Default: Space.
+; ; @param  [Boolean]   	  Trim as individual characters or as a entire string. Default: True.
+; ; @return String     	    Processed text.
+Func RS_trimRight($pText, $pCharacters = Default, $pEntire = Default)
+  ; Set default values
+  If StringLen($pText) = 0 Then Return ''
+  If StringLen($pCharacters) = 0 Then Return $pText
+  If $pCharacters = Default Then $pCharacters = ' '
+  If $pEntire = Default Then $pEntire = True
+
+  If $pEntire Then
+    Local $iLen = StringLen($pCharacters)
+    While StringRight($pText, $iLen) = $pCharacters
+      $pText = StringTrimRight($pText, $iLen)
+    WEnd
+  Else
+    Local $boolExit
+    Local $strChars = StringSplit($pCharacters, '', 2)
+    Do
+      $boolExit = True
+      For $strChar In $strChars
+        If StringInStr($pText, $strChar) Then $boolExit = False
+      Next
+      If $boolExit Then ExitLoop
+
+      For $strChar In $strChars
+        $pText = RS_trimRight($pText, $strChar, True)
+      Next
+      For $i = UBound($strChars) - 1 To 0 Step -1
+        $pText = RS_trimRight($pText, $strChars[$i], True)
+      Next
+    Until $boolExit
+  EndIf
+
+  Return $pText
+EndFunc
+; =============================================================================== RS_trimRight ===>
 ; =========================================================================== STRING PROCEDURES ==>
 
 ; <== IO PROCEDURES ===============================================================================
@@ -742,8 +843,8 @@ Func RS_environ($pText)
   ; User environment variables
   If UBound($UserEnvirons) = 0 Then $UserEnvirons = RS_userEnvironCreate()
   For $i = 0 To UBound($UserEnvirons) - 1
-    If StringInStr($pText, '%' & RS_Trim($UserEnvirons[$i][0], '%') & '%', 2) > 0 Then
-      $pText = StringReplace($pText, '%' & RS_Trim($UserEnvirons[$i][0], '%') & '%', $UserEnvirons[$i][1], 0, 2)
+    If StringInStr($pText, '%' & RS_trim($UserEnvirons[$i][0], '%') & '%', 2) > 0 Then
+      $pText = StringReplace($pText, '%' & RS_trim($UserEnvirons[$i][0], '%') & '%', $UserEnvirons[$i][1], 0, 2)
     EndIf
   Next
 
@@ -751,16 +852,16 @@ Func RS_environ($pText)
   If UBound($Environs) = 0 Then $Environs = RS_environLoad()
   If @error Then Return SetError(@error, @extended, '')
   For $i = 0 To UBound($Environs) - 1
-    If StringInStr($pText, '%' & RS_Trim($Environs[$i][0], '%') & '%', 2) > 0 Then
-      $pText = StringReplace($pText, '%' & RS_Trim($Environs[$i][0], '%') & '%', $Environs[$i][1], 0, 2)
+    If StringInStr($pText, '%' & RS_trim($Environs[$i][0], '%') & '%', 2) > 0 Then
+      $pText = StringReplace($pText, '%' & RS_trim($Environs[$i][0], '%') & '%', $Environs[$i][1], 0, 2)
     EndIf
   Next
 
   ; Special folders variables
   If UBound($SpecialFolders) = 0 Then $SpecialFolders = RS_specialFolderLoad()
   For $i = 0 To UBound($SpecialFolders) - 1
-    If StringInStr($pText, '%' & RS_Trim($SpecialFolders[$i][0], '%') & '%', 2) > 0 Then
-      $pText = StringReplace($pText, '%' & RS_Trim($SpecialFolders[$i][0], '%') & '%', RS_specialFolderPath($SpecialFolders[$i][1]), 0, 2)
+    If StringInStr($pText, '%' & RS_trim($SpecialFolders[$i][0], '%') & '%', 2) > 0 Then
+      $pText = StringReplace($pText, '%' & RS_trim($SpecialFolders[$i][0], '%') & '%', RS_specialFolderPath($SpecialFolders[$i][1]), 0, 2)
     EndIf
   Next
 
@@ -784,15 +885,12 @@ Func RS_environLoad($pCase = 0, $pSymbol = False)
 
   ProcessWaitClose($hID)
   $sLines = StdoutRead($hID)
-  If @error Then Return SetError(@error, @extended, '')
+  If @error Then Return SetError(@error, @extended, Null)
 
-  $sArray = RS_Split($sLines, @CR, 2)
-  _ArrayColInsert($sArray, 0)
-  For $i = 0 To UBound($sArray) - 1
-    $sEntry = StringSplit($sArray[$i][1], '=', 2)
-    $sArray[$i][0] = $sEntry[0]
-    $sArray[$i][1] = $sEntry[1]
-  Next
+  ; Create array
+  If StringRight($sLines, 2) = @CRLF Then $sLines = StringTrimRight($sLines, 2)
+  $sLines = StringReplace($sLines, '=', '|')
+  $sArray = _ArrayFromString($sLines)
 
   $pCase = $pCase = 1 ? 1 : ($pCase = 2 ? 2 : ($pCase = 3 ? 3 : 0))
   $pSymbol = $pSymbol ? True : False
@@ -813,32 +911,49 @@ EndFunc
 ; ; @param  String          Filename with full path.
 ; ; @return Integer         1 if file exists, 0 otherwise.
 Func RS_fileExists($pFullPath)
-  Return FileExists(RS_Trim(RS_Trim($pFullPath, "'"), '"'))
+  Return FileExists(RS_trim(RS_trim($pFullPath, "'"), '"'))
 EndFunc
 ; ============================================================================== RS_fileExists ===>
 ; <=== RS_fileNameInfo ============================================================================
 ; RS_fileNameInfo(String, Integer)
-; ; Returns filename info: drive, directory, filename and/or extension. Uses lowercase.
+; ; Returns filename info: drive, directory, filename and/or extension and changing case.
 ; ;
 ; ; @param  String          Filename with full path.
-; ; @param  Integer         File flags. 1: Name, 2: Extension, 4: Dir, 8: Drive. Default: Name (1).
+; ; @param  Integer         Filename flags. 1: Name, 2: Extension, 4: Dir, 8: Drive,
+; ;                         16: Change to uppercase, 32: Change to lowercase . Default: Name (1).
 ; ; @return String          Filename data: Drive, directory, filename and/or extension.
 Func RS_fileNameInfo($pFullPath, $pFlags = 1)
+  Local $iCase = 0
   Local $sDrive = ''
   Local $sDir = ''
   Local $sFileName = ''
   Local $sExtension = ''
 
+  If BitAND($pFlags, 16) Then $iCase = 1
+  If BitAND($pFlags, 32) Then $iCase = 2
+
   _PathSplit($pFullPath, $sDrive, $sDir, $sFileName, $sExtension)
+  Switch $iCase
+    Case 1
+      $sDrive = StringUpper($sDrive)
+      $sDir = StringUpper($sDir)
+      $sFileName = StringUpper($sFileName)
+      $sExtension = StringUpper($sExtension)
+    Case 2
+      $sDrive = StringLower($sDrive)
+      $sDir = StringLower($sDir)
+      $sFileName = StringLower($sFileName)
+      $sExtension = StringLower($sExtension)
+  EndSwitch
 
   $pFullPath = ''
-  If BitAND($pFlags, 8) Then $pFullPath = StringLower($sDrive)
-  If BitAND($pFlags, 4) Then $pFullPath &= StringLower($sDir)
-  If BitAND($pFlags, 1) Then $pFullPath &= StringLower($sFileName)
+  If BitAND($pFlags, 8) Then $pFullPath = $sDrive
+  If BitAND($pFlags, 4) Then $pFullPath &= $sDir
+  If BitAND($pFlags, 1) Then $pFullPath &= $sFileName
   If BitAND($pFlags, 2) Then
-    $pFullPath &= StringLower($sExtension)
+    $pFullPath &= $sExtension
   ElseIf $pFlags = 2 Then
-    $pFullPath = StringLower($sExtension)
+    $pFullPath = $sExtension
   EndIf
 
   Return $pFullPath
@@ -860,7 +975,7 @@ Func RS_fileNameValid($pName, $pType = 0, $pEnviron = False)
     Case 1
       $pName = StringRegExpReplace($pName, '\\|:|/|\*|\?|\"|\<|\>|\|', '') & '\'
     Case 2
-      $pName = RS_RTrim(StringRegExpReplace($pName, '/|\*|\?|\"|\<|\>|\|', ''), '\') & '\'
+      $pName = RS_trimRight(StringRegExpReplace($pName, '/|\*|\?|\"|\<|\>|\|', ''), '\') & '\'
     Case Else
       $pName = StringRegExpReplace($pName, '\\|:|/|\*|\?|\"|\<|\>|\|', '')
   EndSwitch
@@ -922,15 +1037,15 @@ EndFunc
 Func RS_pathCombine($pPath0, $pPath1 = '', $pPath2 = '', $pPath3 = '', $pPath4 = '', $pPath5 = '', $pPath6 = '', $pPath7 = '', $pPath8 = '', $pPath9 = '')
   ; Add non-empty strings adding a backslash at end.
   Local $sFullPath = RS_environ($pPath0)
-  If StringLen($pPath1) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath1) : RS_RTrim($sFullPath, '\') & '\' & RS_environ($pPath1)
-  If StringLen($pPath2) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath2) : RS_RTrim($sFullPath, '\') & '\' & RS_environ($pPath2)
-  If StringLen($pPath3) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath3) : RS_RTrim($sFullPath, '\') & '\' & RS_environ($pPath3)
-  If StringLen($pPath4) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath4) : RS_RTrim($sFullPath, '\') & '\' & RS_environ($pPath4)
-  If StringLen($pPath5) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath5) : RS_RTrim($sFullPath, '\') & '\' & RS_environ($pPath5)
-  If StringLen($pPath6) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath6) : RS_RTrim($sFullPath, '\') & '\' & RS_environ($pPath6)
-  If StringLen($pPath7) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath7) : RS_RTrim($sFullPath, '\') & '\' & RS_environ($pPath7)
-  If StringLen($pPath8) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath8) : RS_RTrim($sFullPath, '\') & '\' & RS_environ($pPath8)
-  If StringLen($pPath9) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath9) : RS_RTrim($sFullPath, '\') & '\' & RS_environ($pPath9)
+  If StringLen($pPath1) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath1) : RS_trimRight($sFullPath, '\') & '\' & RS_environ($pPath1)
+  If StringLen($pPath2) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath2) : RS_trimRight($sFullPath, '\') & '\' & RS_environ($pPath2)
+  If StringLen($pPath3) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath3) : RS_trimRight($sFullPath, '\') & '\' & RS_environ($pPath3)
+  If StringLen($pPath4) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath4) : RS_trimRight($sFullPath, '\') & '\' & RS_environ($pPath4)
+  If StringLen($pPath5) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath5) : RS_trimRight($sFullPath, '\') & '\' & RS_environ($pPath5)
+  If StringLen($pPath6) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath6) : RS_trimRight($sFullPath, '\') & '\' & RS_environ($pPath6)
+  If StringLen($pPath7) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath7) : RS_trimRight($sFullPath, '\') & '\' & RS_environ($pPath7)
+  If StringLen($pPath8) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath8) : RS_trimRight($sFullPath, '\') & '\' & RS_environ($pPath8)
+  If StringLen($pPath9) > 0 Then $sFullPath = (StringLen($sFullPath) = 0) ? RS_environ($pPath9) : RS_trimRight($sFullPath, '\') & '\' & RS_environ($pPath9)
 
   Return $sFullPath
 EndFunc
@@ -948,6 +1063,7 @@ EndFunc
 Func RS_run($pCommand, $pDir = '', $pTooltip = '', $pShowFlag = @SW_HIDE, $pOptFlags = $STDOUT_CHILD)
   Local $hProcess
   Local $aExitCode
+  Local $bTooltip = Not (StringLen($pTooltip) = 0)
   Local $iPID = Run($pCommand, $pDir, $pShowFlag, $pOptFlags)
   If Not $iPID Then Return SetError(1)
 
@@ -958,14 +1074,14 @@ Func RS_run($pCommand, $pDir = '', $pTooltip = '', $pShowFlag = @SW_HIDE, $pOptF
   EndIf
   If Not $hProcess Then Return SetError(1)
 
-  While 1
+  While ProcessExists($iPID)
     Sleep(1)
-    If StringLen($pTooltip) > 0 Then ToolTip($pTooltip)
-    If ProcessExists($iPID) = 0 Then ExitLoop
+    If $bTooltip Then ToolTip($pTooltip)
+    ; If ProcessExists($iPID) = 0 Then ExitLoop
   WEnd
   ToolTip('')
 
-  Local $aExitCode = DllCall('kernel32.dll', 'bool', 'GetExitCodeProcess', 'HANDLE', $hProcess, 'dword*', -1)
+  $aExitCode = DllCall('kernel32.dll', 'bool', 'GetExitCodeProcess', 'HANDLE', $hProcess, 'dword*', -1)
   _WinAPI_CloseHandle($hProcess)
   Return $aExitCode[2]
 EndFunc
@@ -1224,7 +1340,7 @@ Func RS_specialFolderPath($pFolder)
   Local $iIndex
   Local $sFolderPath
 
-  $pFolder = StringLower(RS_Trim($pFolder, '%'))
+  $pFolder = StringLower(RS_trim($pFolder, '%'))
   If StringLen($pFolder) = 0 Then Return
 ;~ 	If $pFolder = 'script' Then Return @ScriptDir
 
@@ -1268,7 +1384,7 @@ Func RS_userEnvironAdd($pVariable, $pValue)
       $pVariable = StringUpper(StringLeft($pVariable, 1)) & StringLower(StringMid($pVariable, 2))
   EndSwitch
 
-  $pVariable = $UserEnvironsSymbol ? '%' & RS_Trim($pVariable, '%') & '%': RS_Trim($pVariable, '%')
+  $pVariable = $UserEnvironsSymbol ? '%' & RS_trim($pVariable, '%') & '%': RS_trim($pVariable, '%')
 
   Local $iIndex = _ArraySearch($UserEnvirons, $pVariable)
   If $iIndex = -1 Then
@@ -1349,7 +1465,7 @@ Func RS_userEnvironDel($pVariable)
       $pVariable = StringUpper(StringLeft($pVariable, 1)) & StringLower(StringMid($pVariable, 2))
   EndSwitch
 
-  $pVariable = $UserEnvironsSymbol ? '%' & RS_Trim($pVariable, '%') & '%': RS_Trim($pVariable, '%')
+  $pVariable = $UserEnvironsSymbol ? '%' & RS_trim($pVariable, '%') & '%': RS_trim($pVariable, '%')
 
   Local $iIndex = _ArraySearch($UserEnvirons, $pVariable)
   If @error Then
@@ -1369,7 +1485,7 @@ Func RS_userEnvironSymbol($pSymbol)
   If UBound($UserEnvirons) = 0 Then $UserEnvirons = RS_userEnvironCreate()
   $UserEnvironsSymbol = ($pSymbol = True) ? True : False
   For $i = 0 To UBound($UserEnvirons) - 1
-    $UserEnvirons[$i][0] = RS_Trim($UserEnvirons[$i][0], '%')
+    $UserEnvirons[$i][0] = RS_trim($UserEnvirons[$i][0], '%')
     If $UserEnvironsSymbol Then
       $UserEnvirons[$i][0] = '%' & $UserEnvirons[$i][0] & '%'
     EndIf
@@ -1389,6 +1505,61 @@ Func RS_chkState($pCheckBox)
   Return BitAND(GUICtrlRead($pCheckBox), $GUI_CHECKED) = $GUI_CHECKED
 EndFunc
 ; ================================================================================ RS_chkState ===>
+; <=== RS_dlgInput ================================================================================
+; RS_dlgInput(String, String, [String], [Integer], [String])
+; ; Show an InputBox and return result.
+; ;
+; ; @param  String          Input box initial value.
+; ; @param  String          Input box message.
+; ; @param  [String]        Input box title. Default: @ScriptName without extension.
+; ; @param  [Integer]       Dialog position, 0: Top left, 1: Top center, 2: Top right,
+; ;                         3: Middle left, 4: Middle center, 5: Middle right,
+; ;                         6: Bottom left, 7: Bottom center, 8: Bottom right. Default: 4.
+; ; @param  [String]        Password character. Default Empty to show original characters.
+; ; @return String          String entered in Input box.
+Func RS_dlgInput($pDefault, $pMsg, $pTitle = Default, $pPos = Default, $pPasswordChar = Default)
+  If $pTitle = Default Or StringLen($pTitle) = 0 Then $pTitle = RS_removeExt(@ScriptName)
+  If $pPos = Default Then $pPos = 4
+  If $pPasswordChar = Default Then $pPasswordChar = ''
+
+  ; Set dialog position
+  Local $intX
+  Local $intY
+  Switch $pPos
+    Case 0
+      $intX = 10
+      $inty = 20
+    Case 1
+      $intX = @DesktopWidth / 2 - 160
+      $inty = 20
+    Case 2
+      $intX = @DesktopWidth - 310
+      $inty = 20
+    Case 3
+      $intX = 10
+      $inty = @DesktopHeight / 2 - 90
+    Case 5
+      $intX = @DesktopWidth - 310
+      $inty = @DesktopHeight / 2 - 90
+    Case 6
+      $intX = 10
+      $inty = @DesktopHeight - 180
+    Case 7
+      $intX = @DesktopWidth / 2 - 160
+      $inty = @DesktopHeight - 180
+    Case 8
+      $intX = @DesktopWidth - 310
+      $inty = @DesktopHeight - 180
+    Case Else
+      $intX = @DesktopWidth / 2 - 160
+      $inty = @DesktopHeight / 2 - 90
+  EndSwitch
+
+  $pDefault = InputBox($pTitle, $pMsg, $pDefault, '', 300, 130, $intX, $inty)
+  If @error Then Return SetError(@error, @extended, Null)
+  Return $pDefault
+EndFunc
+; ================================================================================ RS_dlgInput ===>
 ; <=== RS_eventState ==============================================================================
 ; RS_eventState(Integer, Integer)
 ; ; Checks if GUI event comes from given checkbox.
