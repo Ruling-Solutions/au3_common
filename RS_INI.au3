@@ -1,11 +1,12 @@
 #include-once
-
 #include <Array.au3>
 
+Local $boolReplacedEscaped = True
+
 ; Creates ASCII characters string
-Local $sAscii
+Local $strASCIIchars
 For $i = 160 To 255
-  $sAscii &= Chr($i)
+  $strASCIIchars &= Chr($i)
 Next
 
 ; <== INI MANAGEMENT ==============================================================================
@@ -17,12 +18,20 @@ Next
 ; ; @param  String           Text line.
 ; ; @return NONE
 Func INI_append($pINIFile, $pLine)
-	Local $iFile = FileOpen($pINIFile, 1) ; $FO_APPEND
+	Local $intFile = FileOpen($pINIFile, 1) ; $FO_APPEND
 	If @error Then Return SetError(5006, 0, '')
-	FileWriteLine($iFile, $pLine)
-	FileClose($iFile)
-EndFunc   ;==>INI_lineAppend
-
+	FileWriteLine($intFile, $pLine)
+	FileClose($intFile)
+EndFunc   ;==>INI_append
+; <=== INI_append =================================================================================
+; INI_append(Boolean)
+; ; Default behaviour of escape sequences replacement.
+; ;
+; ; @param  Boolean           True to replace escaped sequences. False to avoid replacement.
+; ; @return NONE
+Func INI_replacedEscaped($pReplacedEscaped)
+  $pReplacedEscaped = $boolReplacedEscaped
+EndFunc   ;==>INI_replacedEscaped
 ; <=== INI_keys ===================================================================================
 ; INI_keys(String, String, [String], [Integer], [Boolean])
 ; ; Returns all keys from section in INI file.
@@ -34,78 +43,77 @@ EndFunc   ;==>INI_lineAppend
 ; ; @param  [Boolean]       Case sensitve comparation.
 ; ; @return String[]        Array with keys found.
 Func INI_keys($pINIFile, $pSection, $pInclude = '', $pIncludePos = 1, $pCaseSensitive = True)
-	Local $bIncluded
-	Local $iIncludedLen = 0
-	Local $iLinesCount
-	Local $iPos
-	Local $sLines
-	Local $sLine
-	Local $sKeys[0]
+	Local $boolIncluded
+	Local $intIncludeLen = 0
+	Local $intLinesCount
+	Local $intPos
+	Local $strLines
+	Local $strLine
+	Local $strKeys[0]
 
 	If StringLen($pINIFile) = 0 Or StringLen($pSection) = 0 Or Not FileExists($pINIFile) Then Return SetError(5005, 0, '')
 
 	; Load lines from INI file into array
-	$iIncludedLen = StringLen($pInclude)
-	$sLines = FileReadToArray($pINIFile)
+	$intIncludeLen = StringLen($pInclude)
+	$strLines = FileReadToArray($pINIFile)
 	If @error Then Return SetError(100, 0, '')
-	$iLinesCount = @extended
+	$intLinesCount = @extended
 
 	; Search for sections
 	$pSection = '[' & $pSection & ']'
-	For $j = 0 To $iLinesCount - 1
-		If $pSection == $sLines[$j] Then
+	For $j = 0 To $intLinesCount - 1
+		If $pSection == $strLines[$j] Then
 			; Section found, add keys to array
-			For $i = $j + 1 To $iLinesCount - 1
-				$sLine = StringStripWS($sLines[$i], 1)
-				If StringLeft($sLine, 1) <> ';' Then
-					If StringLeft($sLine, 1) = '[' Then
+			For $i = $j + 1 To $intLinesCount - 1
+				$strLine = StringStripWS($strLines[$i], 1)
+				If StringLeft($strLine, 1) <> ';' Then
+					If StringLeft($strLine, 1) = '[' Then
 						; New section, return array
-						Return $sKeys
+						Return $strKeys
 					Else
 						; Check and add keys
-						$iPos = StringInStr($sLine, '=')
-						If $iPos > 0 Then
-							$sLine = StringStripWS(StringLeft($sLine, $iPos	- 1), 3)
-							If $iIncludedLen > 0 Then
-								If StringLen($sLine) > $iIncludedLen Then
+						$intPos = StringInStr($strLine, '=')
+						If $intPos > 0 Then
+							$strLine = StringStripWS(StringLeft($strLine, $intPos	- 1), 3)
+							If $intIncludeLen > 0 Then
+								If StringLen($strLine) > $intIncludeLen Then
 									If $pCaseSensitive Then
 										; Search text in key name (case sensitive).
 										If BitAND($pIncludePos, 1) Then
-											$bIncluded = StringLeft($sLine, $iIncludedLen) == $pInclude
+											$boolIncluded = StringLeft($strLine, $intIncludeLen) == $pInclude
 										EndIf
 										If BitAND($pIncludePos, 2) Then
-											$bIncluded = $bIncluded Or StringRight($sLine, $iIncludedLen) == $pInclude
+											$boolIncluded = $boolIncluded Or StringRight($strLine, $intIncludeLen) == $pInclude
 										EndIf
 										If BitAND($pIncludePos, 4) Then
-											$bIncluded = $bIncluded Or StringInStr($sLine, $pInclude, 1, 1, 2, StringLen($sLine) - 2) > 0
+											$boolIncluded = $boolIncluded Or StringInStr($strLine, $pInclude, 1, 1, 2, StringLen($strLine) - 2) > 0
 										EndIf
 									Else
 										; Search text in key name (case insensitive).
 										If BitAND($pIncludePos, 1) Then
-											$bIncluded = StringLeft($sLine, $iIncludedLen) = $pInclude
+											$boolIncluded = StringLeft($strLine, $intIncludeLen) = $pInclude
 										EndIf
 										If BitAND($pIncludePos, 2) Then
-											$bIncluded = $bIncluded Or StringRight($sLine, $iIncludedLen) = $pInclude
+											$boolIncluded = $boolIncluded Or StringRight($strLine, $intIncludeLen) = $pInclude
 										EndIf
 										If BitAND($pIncludePos, 4) Then
-											$bIncluded = $bIncluded Or StringInStr($sLine, $pInclude, 2, 1, 2, StringLen($sLine) - 2) > 0
+											$boolIncluded = $boolIncluded Or StringInStr($strLine, $pInclude, 2, 1, 2, StringLen($strLine) - 2) > 0
 										EndIf
 									EndIf
 								EndIf
 							Else
-								$bIncluded = True
+								$boolIncluded = True
 							EndIf
 
-							If $bIncluded Then _ArrayAdd($sKeys, $sLine)
+							If $boolIncluded Then _ArrayAdd($strKeys, $strLine)
 						EndIf
 					EndIf
 				EndIf
 			Next
 		EndIf
 	Next
-	Return $sKeys
+	Return $strKeys
 EndFunc   ;==>INI_keys
-
 ; <=== INI_keyExists ==============================================================================
 ; INI_keyExists(String, String, String, [String], [Integer], [Boolean])
 ; ; Check if a key exists in a section from an INI file.
@@ -120,15 +128,14 @@ EndFunc   ;==>INI_keys
 Func INI_keyExists($pINIFile, $pSection, $pKey, $pInclude = '', $pIncludePos = 1, $pCaseSensitive = True)
 	If StringLen($pINIFile) = 0 Or StringLen($pSection) = 0 Or StringLen($pKey) = 0 Or Not FileExists($pINIFile) Then Return SetError(5005, 0, False)
 
-	Local $aKeys = INI_keys($pINIFile, $pSection, $pInclude, $pIncludePos, $pCaseSensitive)
+	Local $strKeys = INI_keys($pINIFile, $pSection, $pInclude, $pIncludePos, $pCaseSensitive)
 	If @error Then Return SetError(101, 0, '')
 
-	For $sKey In $aKeys
-		If $sKey = $pKey Then Return True
+	For $strKey In $strKeys
+		If $strKey = $pKey Then Return True
 	Next
 	Return False
 EndFunc
-
 ; <=== INI_objectName =============================================================================
 ; INI_objectName(String, String, String, String, String)
 ; ; Returns window or control title & class. If value is empty, use REGEXPTITLE.
@@ -141,25 +148,24 @@ EndFunc
 ; ; @return String          Window or control advanced title.
 Func INI_objectName($pINIFile, $pSection, $pKey, $pValue, $pClass = '')
 	If StringLen($pKey) > 0 Then
-		Local $sValue = INI_valueLoad($pINIFile, $pSection, $pKey, $pValue)
+		Local $strValue = INI_valueLoad($pINIFile, $pSection, $pKey, $pValue)
 		If @error Then Return SetError(102, 0, '')
-		If StringLen($sValue) = 0 Then $sValue = $pValue
+		If StringLen($strValue) = 0 Then $strValue = $pValue
 
 		If StringLen($pClass) > 0 Then
 			$pClass = StringReplace(StringReplace($pClass, ']', ']]', 0, 2), '[', '[[', 0, 2)
-			If StringLen($sValue) = 0 Then
+			If StringLen($strValue) = 0 Then
 				Return '[REGEXPTITLE:^(?![\s\S]); CLASS:' & $pClass & ']'
 			Else
-				Return '[TITLE:' & StringReplace(StringReplace($sValue, ']', ']]', 0, 2), '[', '[[', 0, 2) & '; CLASS:' & $pClass & ']'
+				Return '[TITLE:' & StringReplace(StringReplace($strValue, ']', ']]', 0, 2), '[', '[[', 0, 2) & '; CLASS:' & $pClass & ']'
 			EndIf
 		Else
-			Return $sValue
+			Return $strValue
 		EndIf
 	Else
 		Return ''
 	EndIf
 EndFunc
-
 ; <=== INI_pointLoad ==============================================================================
 ; INI_pointLoad(String, String, String, [String], [Boolean])
 ; ; Returns an array with a point value from INI file.
@@ -174,18 +180,17 @@ Func INI_pointLoad($pINIFile, $pSection, $pKey, $pValue = '', $pSeparator = Defa
 	If $pSeparator = Default Or StringLen($pSeparator) = 0 Then $pSeparator = ','
 	$pSeparator = StringStripWS($pSeparator, 8)
 
-	Local $sEntries = INI_valueLoad($pINIFile, $pSection, $pKey, $pValue, False)
+	Local $strLine = INI_valueLoad($pINIFile, $pSection, $pKey, $pValue, False)
 	If @error Then Return SetError(103, 0, '')
-	$sEntries = StringReplace($sEntries, $pSeparator & $pSeparator, $pSeparator)
-	Local $aEntries = StringSplit($sEntries, $pSeparator & ' ', 2)
+	$strLine = StringReplace($strLine, $pSeparator & $pSeparator, $pSeparator)
+	Local $strEntries = StringSplit($strLine, $pSeparator & ' ', 2)
 
 	; Remove empty entries
-	For $i = UBound($aEntries) - 1 To 1 Step -1
-		If StringLen($aEntries[$i]) = 0 Then _ArrayDelete($aEntries, $i)
+	For $i = UBound($strEntries) - 1 To 1 Step -1
+		If StringLen($strEntries[$i]) = 0 Then _ArrayDelete($strEntries, $i)
 	Next
-	Return $aEntries
+	Return $strEntries
 EndFunc
-
 ; <=== INI_sections ===============================================================================
 ; INI_sections(String, [String], [Integer], [Boolean])
 ; ; Returns all section from an INI file.
@@ -196,61 +201,60 @@ EndFunc
 ; ; @param  [Boolean]       Case sensitve comparation.
 ; ; @return String[]        Array with sections found.
 Func INI_sections($pINIFile, $pInclude = '', $pIncludePos = 1, $pCaseSensitive = True)
-	Local $bIncluded
-	Local $iIncludedLen = 0
-	Local $sLines
-	Local $sSections[0]
+	Local $boolIncluded
+	Local $intIncludeLen = 0
+	Local $strLines
+	Local $strSections[0]
 
 	If StringLen($pINIFile) = 0 Or Not FileExists($pINIFile) Then Return SetError(5004)
 
 	; Init variables and load lines from INI file into array
-	$iIncludedLen = StringLen($pInclude)
-	$sLines = FileReadToArray($pINIFile)
+	$intIncludeLen = StringLen($pInclude)
+	$strLines = FileReadToArray($pINIFile)
 	If @error Then Return SetError(5002, 0, '')
 
 	; Search for sections
-	For $sLine In $sLines
-		If StringLeft($sLine, 1) = '[' Then
+	For $strLine In $strLines
+		If StringLeft($strLine, 1) = '[' Then
 			; Section found, add it to array
-			$bIncluded = False
-			$sLine = StringMid($sLine, 2, StringInstr($sLine, ']') - 2)
-			If $iIncludedLen > 0 Then
-				If StringLen($sLine) > $iIncludedLen Then
+			$boolIncluded = False
+			$strLine = StringMid($strLine, 2, StringInstr($strLine, ']') - 2)
+			If $intIncludeLen > 0 Then
+				If StringLen($strLine) > $intIncludeLen Then
 					If $pCaseSensitive Then
 						; Search text in section name (case sensitive).
 						If BitAND($pIncludePos, 1) = 1 Then
-							$bIncluded = StringLeft($sLine, $iIncludedLen) == $pInclude
+							$boolIncluded = StringLeft($strLine, $intIncludeLen) == $pInclude
 						EndIf
 						If BitAND($pIncludePos, 2) = 2 Then
-							$bIncluded = $bIncluded Or StringRight($sLine, $iIncludedLen) == $pInclude
+							$boolIncluded = $boolIncluded Or StringRight($strLine, $intIncludeLen) == $pInclude
 						EndIf
 						If BitAND($pIncludePos, 4) = 4 Then
-							$bIncluded = $bIncluded Or StringInStr($sLine, $pInclude, 1, 1, 2, StringLen($sLine) - 2) > 0
+							$boolIncluded = $boolIncluded Or StringInStr($strLine, $pInclude, 1, 1, 2, StringLen($strLine) - 2) > 0
 						EndIf
 					Else
 						; Search text in section name (case insensitive).
 						If BitAND($pIncludePos, 1) = 1 Then
-							$bIncluded = StringLeft($sLine, $iIncludedLen) = $pInclude
+							$boolIncluded = StringLeft($strLine, $intIncludeLen) = $pInclude
 						EndIf
 						If BitAND($pIncludePos, 2) = 2 Then
-							$bIncluded = $bIncluded Or StringRight($sLine, $iIncludedLen) = $pInclude
+							$boolIncluded = $boolIncluded Or StringRight($strLine, $intIncludeLen) = $pInclude
 						EndIf
 						If BitAND($pIncludePos, 4) = 4 Then
-							$bIncluded = $bIncluded Or StringInStr($sLine, $pInclude, 2, 1, 2, StringLen($sLine) - 2) > 0
+							$boolIncluded = $boolIncluded Or StringInStr($strLine, $pInclude, 2, 1, 2, StringLen($strLine) - 2) > 0
 						EndIf
 					EndIf
 				EndIf
 			Else
-				$bIncluded = True
+				$boolIncluded = True
 			EndIf
 
-			If $bIncluded Then _ArrayAdd($sSections, $sLine)
+			If $boolIncluded Then _ArrayAdd($strSections, $strLine)
 		EndIf
 	Next
 
-	Return $sSections
+	Return $strSections
 EndFunc   ;==>INI_sections
-
 ; <=== INI_sectionExists ==========================================================================
 ; INI_sectionExists(String, String, [String], [Integer], [Boolean])
 ; ; Check if a section exists in an INI file.
@@ -264,13 +268,12 @@ EndFunc   ;==>INI_sections
 Func INI_sectionExists($pINIFile, $pSection, $pInclude = '', $pIncludePos = 1, $pCaseSensitive = True)
 	If StringLen($pINIFile) = 0 Or StringLen($pSection) = 0 Or Not FileExists($pINIFile) Then Return SetError(5004, 0, False)
 
-	Local $aSections = INI_sections($pINIFile, $pInclude, $pIncludePos, $pCaseSensitive)
-	For $sSection In $aSections
-		If $sSection = $pSection Then Return True
+	Local $strSections = INI_sections($pINIFile, $pInclude, $pIncludePos, $pCaseSensitive)
+	For $strSection In $strSections
+		If $strSection = $pSection Then Return True
 	Next
 	Return False
 EndFunc
-
 ; <=== INI_valueDelete ============================================================================
 ; INI_valueDelete(String, String, String)
 ; ; Removes a value from an INI file.
@@ -283,7 +286,6 @@ Func INI_valueDelete($pINIFile, $pSection, $pKey)
 	_INI_value($pINIFile, $pSection, $pKey, '', 'deleting')
 	If @error Then Return SetError(@error, @extended, '')
 EndFunc   ;==>INI_valueDelete
-
 ; <=== INI_valueLoad ==============================================================================
 ; INI_valueLoad(String, String, String, [String], [Boolean])
 ; ; Reads a value from an INI file.
@@ -295,21 +297,18 @@ EndFunc   ;==>INI_valueDelete
 ; ; @param  [Boolean]       Replace escape sequences. Default: True.
 ; ; @return String          Key value.
 Func INI_valueLoad($pINIFile, $pSection, $pKey, $pValue = Default, $pReplaceEscapes = Default)
-  Local $iPos
-	Local $sChar
-
 	If $pValue = Default Then $pValue = ''
+	If $pReplaceEscapes = Default Then $pReplaceEscapes = $boolReplacedEscaped
+
 	$pValue = _INI_value($pINIFile, $pSection, $pKey, $pValue, 'loading')
 	If @error Then Return SetError(@error, @extended, '')
 
 	; Replace escape sequences
-	If $pReplaceEscapes = Default Then $pReplaceEscapes = True
-	If $pReplaceEscapes Then $pValue = _INI_escapeText($pValue)
+	If $pReplaceEscapes Then $pValue = _INI_escapeSeq($pValue)
 
 	; Return value
 	Return $pValue
 EndFunc   ;==>INI_valueLoad
-
 ; <=== INI_valueReplace ===========================================================================
 ; INI_valueReplace(String, String, String, String, [Boolean])
 ; ; Modify a value in INI file if is diferent from stored value.
@@ -321,18 +320,17 @@ EndFunc   ;==>INI_valueLoad
 ; ; @param  [Boolean]       Restore escape sequences. Default: True.
 ; ; @return String          Key value.
 Func INI_valueReplace($pINIFile, $pSection, $pKey, $pValue, $pReplaceEscapes = Default)
-	Local $sValue = INI_valueLoad($pINIFile, $pSection, $pKey, '', $pReplaceEscapes)
+	Local $strValue = INI_valueLoad($pINIFile, $pSection, $pKey, '', $pReplaceEscapes)
 	If @error Then Return SetError(@error, @extended, '')
 
-	If $pValue = $sValue Then
+	If $pValue = $strValue Then
 		Return $pValue
 	Else
-		$sValue = INI_valueWrite($pINIFile, $pSection, $pKey, $pValue, $pReplaceEscapes)
+		$strValue = INI_valueWrite($pINIFile, $pSection, $pKey, $pValue, $pReplaceEscapes)
 		If @error Then Return SetError(@error, @extended, '')
-		Return $sValue
+		Return $strValue
 	EndIf
 EndFunc
-
 ; <=== INI_valueWrite =============================================================================
 ; INI_valueWrite(String, String, String, String, [Boolean])
 ; ; Writes a value in an INI file.
@@ -344,17 +342,88 @@ EndFunc
 ; ; @param  [Boolean]       Restore escape sequences. Default: True.
 ; ; @return String          Key value.
 Func INI_valueWrite($pINIFile, $pSection, $pKey, $pValue, $pReplaceEscapes = Default)
-  ; Restore escape sequences
-	If $pReplaceEscapes = Default Then $pReplaceEscapes = True
-	If $pReplaceEscapes Then $pValue = _INI_escapeText($pValue, True)
+	If $pReplaceEscapes = Default Then $pReplaceEscapes = $boolReplacedEscaped
 
-	Local $sValue = _INI_value($pINIFile, $pSection, $pKey, $pValue, 'writing')
+  ; Restore escape sequences
+	If $pReplaceEscapes Then $pValue = _INI_escapeSeq($pValue, False)
+
+	Local $strValue = _INI_value($pINIFile, $pSection, $pKey, $pValue, 'writing')
 	If @error Then Return SetError(@error, @extended, '')
-	Return $sValue
+	Return $strValue
 EndFunc   ;==>INI_valueWrite
 ; ============================================================================== INI MANAGEMENT ==>
-
 ; <== INTERNAL PROCEDURES =========================================================================
+; <=== _INI_escapeSeq =============================================================================
+; _INI_escapeSeq(String, [Boolean])
+; ; Replaces or restores escape sequences in a string.
+; ;
+; ; @param  String           Text string.
+; ; @param  [Boolean]        Direction. True: Resolve escapes. False: Restore them. Default: True.
+; ; @return String           Processed text string.
+Func _INI_escapeSeq($pText, $pDirection = True)
+	If StringLen($pText) = 0 Then Return ''
+
+	Local $intPos
+	Local $strChar
+
+	If $pDirection Then
+		; Resolve escape sequences
+		$pText = StringReplace($pText, '\\', Chr(1), 0, 2)
+		$pText = StringReplace($pText, '\r', @CR, 0, 1)
+		$pText = StringReplace($pText, '\n', @CRLF, 0, 1)
+		$pText = StringReplace($pText, '\t', Chr(9), 0, 1)
+
+		Do
+			$intPos = StringInStr($pText, '\x', 1)
+			If $intPos > 0 Then
+				$strChar = StringMid($pText, $intPos + 2, 2)
+				$pText = StringReplace($pText, '\x' & $strChar, Chr(Dec($strChar)), 0, 1)
+			EndIf
+		Until $intPos = 0
+		$pText = StringReplace($pText, Chr(1), '\')
+	Else
+		; Restore escape sequences
+		$pText = StringReplace($pText, '\', '\\', 0, 2)
+		$pText = StringReplace($pText, @CRLF, '\n', 0, 2)
+		$pText = StringReplace($pText, @LF, '\n', 0, 2)
+		$pText = StringReplace($pText, @CR, '\r', 0, 2)
+		$pText = StringReplace($pText, Chr(9), '\t', 0, 2)
+		For $i = 1 To StringLen($pText)
+			$strChar = StringMid($pText, $i, 1)
+			If StringInStr($strASCIIchars, $strChar, 1) > 0 Then $pText = StringReplace($pText, $strChar, '\x' & Hex(Asc($strChar)), 0, 1)
+		Next
+	EndIf
+
+	Return $pText
+EndFunc
+; <=== _INI_fileWrite =============================================================================
+; _INI_fileWrite(String, ByRef String[])
+; ; Internal procedure for writing array to file (preserve encoding).
+; ;
+; ; @param  String          INI file.
+; ; @param  String[]        String array.
+; ; @return NONE
+Func _INI_fileWrite($pFileName, ByRef $pArray)
+	If StringLen($pFileName) = 0 Then Return
+
+	; Check file encoding or create it with $FO_UTF8 encoding.
+	Local $intEncoding = (FileExists($pFileName)) ? FileGetEncoding($pFileName, 2) : 128
+
+	; Open file for overwrite with encoding.
+	Local $hFile = FileOpen($pFileName, BitOR(2, 8, $intEncoding)) ; $FO_OVERWRITE (2), $FO_CREATEPATH (8)
+	If $hFile = -1 Then Return SetError(1)
+
+	; Write array to file.
+	For $i = 0 To UBound($pArray) - 1
+		If FileWriteLine($hFile, $pArray[$i]) = 0 Then
+			FileClose($hFile)
+			Return SetError(1)
+		EndIf
+	Next
+
+	; Close handle.
+	FileClose($hFile)
+EndFunc
 ; <=== _INI_trim ==================================================================================
 ; _INI_trim(String, String, [String])
 ; ; Removes leading and trailing characters.
@@ -384,8 +453,8 @@ Func _INI_trimLeft($pText, $pCharacters, $pEntire = False)
 			$pText = StringTrimLeft($pText, $intLen)
 		Wend
 	Else
-		For $sChar In StringSplit($pCharacters, '', 2)
-			$pText = _INI_trimLeft($pText, $sChar, True)
+		For $strChar In StringSplit($pCharacters, '', 2)
+			$pText = _INI_trimLeft($pText, $strChar, True)
 		Next
 	EndIf
 	Return $pText
@@ -408,14 +477,13 @@ Func _INI_trimRight($pText, $pCharacters, $pEntire = False)
 			$pText = StringTrimRight($pText, $intLen)
 		Wend
 	Else
-		For $sChar In StringSplit($pCharacters, '', 2)
-			$pText = _INI_trimRight($pText, $sChar, True)
+		For $strChar In StringSplit($pCharacters, '', 2)
+			$pText = _INI_trimRight($pText, $strChar, True)
 		Next
 	EndIf
 
 	Return $pText
 EndFunc
-
 ; <=== _INI_value =================================================================================
 ; _INI_value(String, String, String, String, String)
 ; ; Internal procedure for value management (supports encoding: UTF-8, ANSI or others).
@@ -427,11 +495,11 @@ EndFunc
 ; ; @param  String          Action: deleting, loading, writing.
 ; ; @return String          Value according to action.
 Func _INI_value($pINIFile, $pSection, $pKey, $pValue, $pAction)
-	Local $bSectionFound
-	Local $iLinesCount = 0
-	Local $iPos
-	Local $sLines
-	Local $sLine
+	Local $boolSectionFound
+	Local $intLinesCount = 0
+	Local $intPos
+	Local $strLines
+	Local $strLine
 
 	; Check parameters
 	If StringLen($pINIFile) = 0 Or StringLen($pSection) = 0 Or StringLen($pKey) = 0 Then Return ''
@@ -441,40 +509,40 @@ Func _INI_value($pINIFile, $pSection, $pKey, $pValue, $pAction)
 
 	If FileExists($pINIFile) Then
 		; Load lines from INI file into array
-		$sLines = FileReadToArray($pINIFile)
+		$strLines = FileReadToArray($pINIFile)
 		If @error Then Return SetError(5003, 0, '')
-		$iLinesCount = @extended
+		$intLinesCount = @extended
 
-		For $j = 0 To $iLinesCount - 1
-			$sLine = StringStripWS($sLines[$j], 1)
-			If $pSection == $sLine Then
+		For $j = 0 To $intLinesCount - 1
+			$strLine = StringStripWS($strLines[$j], 1)
+			If $pSection == $strLine Then
 				; Section match (case sensitive), search for key
-				$bSectionFound = True
-				For $i = $j + 1 To $iLinesCount - 1
-					$sLine = StringStripWS($sLines[$i], 1)
-					$iPos = StringInStr($sLine, '=', 2)
-					If StringLeft($sLine, 1) <> ';' And $iPos > 0 Then
-						If $pKey == StringStripWS(StringLeft($sLine, $iPos - 1), 3) Then
+				$boolSectionFound = True
+				For $i = $j + 1 To $intLinesCount - 1
+					$strLine = StringStripWS($strLines[$i], 1)
+					$intPos = StringInStr($strLine, '=', 2)
+					If StringLeft($strLine, 1) <> ';' And $intPos > 0 Then
+						If $pKey == StringStripWS(StringLeft($strLine, $intPos - 1), 3) Then
 							; Key match (case sensitive), execute action
 							Switch $pAction
 								Case 'deleting'
-									_ArrayDelete($sLines, $i)
+									_ArrayDelete($strLines, $i)
 									If @error Then Return SetError(5003, 1, '')
-									_INI_fileWrite($pINIFile, $sLines)
+									_INI_fileWrite($pINIFile, $strLines)
 									If @error Then Return SetError(5003, 1, '')
 									Return ''
 								Case 'loading'
-									Return StringMid($sLine, $iPos + 1)
+									Return StringMid($strLine, $intPos + 1)
 								Case 'writing'
-									If StringMid($sLine, $iPos + 1) <> $pValue Then
-										$sLines[$i] = $pKey & '=' & $pValue
-										_INI_fileWrite($pINIFile, $sLines)
+									If StringMid($strLine, $intPos + 1) <> $pValue Then
+										$strLines[$i] = $pKey & '=' & $pValue
+										_INI_fileWrite($pINIFile, $strLines)
 										If @error Then Return SetError(5002, 1, '')
 									EndIf
 									Return $pValue
 							EndSwitch
 						Endif
-					ElseIf StringLeft($sLine, 1) = '[' Then
+					ElseIf StringLeft($strLine, 1) = '[' Then
 						; New Section and no Key found, execute action
 						Switch $pAction
 							Case 'deleting'
@@ -482,9 +550,9 @@ Func _INI_value($pINIFile, $pSection, $pKey, $pValue, $pAction)
 							Case 'loading'
 								Return $pValue
 							Case 'writing'
-								_ArrayInsert($sLines, $i, $pKey & '=' & $pValue)
+								_ArrayInsert($strLines, $i, $pKey & '=' & $pValue)
 								If @error Then Return SetError(5002, 2, '')
-								_INI_fileWrite($pINIFile, $sLines)
+								_INI_fileWrite($pINIFile, $strLines)
 								If @error Then Return SetError(5002, 2, '')
 								Return $pValue
 						EndSwitch
@@ -498,13 +566,13 @@ Func _INI_value($pINIFile, $pSection, $pKey, $pValue, $pAction)
 					Case 'loading'
 						Return $pValue
 					Case 'writing'
-						If Not $bSectionFound Then
-							_ArrayAdd($sLines, $pSection)
+						If Not $boolSectionFound Then
+							_ArrayAdd($strLines, $pSection)
 							If @error Then Return SetError(5002, 3, '')
 						EndIf
-						_ArrayAdd($sLines, $pKey & '=' & $pValue)
+						_ArrayAdd($strLines, $pKey & '=' & $pValue)
 						If @error Then Return SetError(5002, 3, '')
-						_INI_fileWrite($pINIFile, $sLines)
+						_INI_fileWrite($pINIFile, $strLines)
 						If @error Then Return SetError(5002, 3, '')
 						Return $pValue
 				EndSwitch
@@ -518,17 +586,17 @@ Func _INI_value($pINIFile, $pSection, $pKey, $pValue, $pAction)
 			Case 'loading'
 				Return $pValue
 			Case 'writing'
-				If $iLinesCount > 0 Then
-					_ArrayAdd($sLines, $pSection)
+				If $intLinesCount > 0 Then
+					_ArrayAdd($strLines, $pSection)
 					If @error Then Return SetError(5002, 4, '')
-					_ArrayAdd($sLines, $pKey & '=' & $pValue)
+					_ArrayAdd($strLines, $pKey & '=' & $pValue)
 					If @error Then Return SetError(5002, 4, '')
 				Else
-					Dim $sLines[2]
-					$sLines[0] = $pSection
-					$sLines[1] = $pKey & '=' & $pValue
+					Dim $strLines[2]
+					$strLines[0] = $pSection
+					$strLines[1] = $pKey & '=' & $pValue
 				EndIf
-				_INI_fileWrite($pINIFile, $sLines)
+				_INI_fileWrite($pINIFile, $strLines)
 				If @error Then Return SetError(5002, 4, '')
 				Return $pValue
 		EndSwitch
@@ -540,85 +608,13 @@ Func _INI_value($pINIFile, $pSection, $pKey, $pValue, $pAction)
 			Case 'loading'
 				Return $pValue
 			Case 'writing'
-				Dim $sLines[2]
-				$sLines[0] = $pSection
-				$sLines[1] = $pKey & '=' & $pValue
-				_INI_fileWrite($pINIFile, $sLines)
+				Dim $strLines[2]
+				$strLines[0] = $pSection
+				$strLines[1] = $pKey & '=' & $pValue
+				_INI_fileWrite($pINIFile, $strLines)
 				If @error Then Return SetError(5002, 0, '')
 				Return $pValue
 		EndSwitch
 	EndIf
 EndFunc   ;==>_INI_value
-
-; <=== _INI_escapeText ============================================================================
-; _INI_escapeText(String, [Boolean])
-; ; Replaces or restores escape characters from string.
-; ;
-; ; @param  String           Text string to process.
-; ; @param  [Boolean]        False to replace or True to restore escape characters. Default: False.
-; ; @return String           Text string processed.
-Func _INI_escapeText($pText, $pRestoreEscapes = False)
-	Local $iPos
-	Local $sChar
-
-	If StringLen($pText) = 0 Then Return ''
-
-	If $pRestoreEscapes Then
-		$pText = StringReplace($pText, '\', '\\', 0, 2)
-		$pText = StringReplace($pText, @CRLF, '\n', 0, 2)
-		$pText = StringReplace($pText, @CR, '\r', 0, 2)
-		$pText = StringReplace($pText, Chr(9), '\t', 0, 2)
-		For $i = 1 To StringLen($pText)
-			$sChar = StringMid($pText, $i, 1)
-			If StringInStr($sAscii, $sChar, 1) > 0 Then $pText = StringReplace($pText, $sChar, '\x' & Hex(Asc($sChar)), 0, 1)
-		Next
-	Else
-		$pText = StringReplace($pText, '\\', Chr(1), 0, 2)
-		$pText = StringReplace($pText, '\r', @CR, 0, 1)
-		$pText = StringReplace($pText, '\n', @CRLF, 0, 1)
-		$pText = StringReplace($pText, '\t', Chr(9), 0, 1)
-
-		While 1
-			$iPos = StringInStr($pText, '\x', 1)
-			If $iPos = 0 Then
-				ExitLoop
-			Else
-				$sChar = StringMid($pText, $iPos + 2, 2)
-				$pText = StringReplace($pText, '\x' & $sChar, Chr(Dec($sChar)), 0, 1)
-			EndIf
-		WEnd
-		$pText = StringReplace($pText, Chr(1), '\')
-	EndIf
-
-	Return $pText
-EndFunc
-
-; <=== _INI_fileWrite =============================================================================
-; _INI_fileWrite(String, ByRef String[])
-; ; Internal procedure for writing array to file (preserve encoding).
-; ;
-; ; @param  String          INI file.
-; ; @param  String[]        String array.
-; ; @return NONE
-Func _INI_fileWrite($pFileName, ByRef $pArray)
-	If StringLen($pFileName) = 0 Then Return
-
-	; Check file encoding or create with $FO_UTF8 encoding.
-	Local $iEncoding = (FileExists($pFileName)) ? FileGetEncoding($pFileName, 2) : 128
-
-	; Open file for overwrite with encoding.
-	Local $hFile = FileOpen($pFileName, 2 + $iEncoding) ; $FO_OVERWRITE (2)
-	If $hFile = -1 Then Return SetError(1)
-
-	; Write array to file.
-	For $i = 0 To UBound($pArray) - 1
-		If FileWriteLine($hFile, $pArray[$i]) = 0 Then
-			FileClose($hFile)
-			Return SetError(1)
-		EndIf
-	Next
-
-	; Close handle.
-	FileClose($hFile)
-EndFunc
 ; ========================================================================= INTERNAL PROCEDURES ==>
